@@ -40,4 +40,4 @@ out/
 
 .env
 .env.*
-.env.compose.example
+#!.env.example
