@@ -6,7 +6,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT}
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
   datasource:
     driver-class-name: org.postgresql.Driver
@@ -37,7 +37,7 @@ spring:
         default_batch_fetch_size: 100
 
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
 
 logging:
   level:
@@ -68,10 +68,10 @@ app:
       domain: ${COOKIE_DOMAIN:}
       secure: ${COOKIE_SECURE:false}
     oauth:
-      kakao-login-url: ${OAUTH_KAKAO_LOGIN_URL:https://api.muneo.ai.kr/oauth2/authorization/kakao}
-      frontend-success-uri: ${OAUTH_FRONTEND_SUCCESS_URI:http://localhost:3000/auth/callback/success}
-      frontend-signup-uri: ${OAUTH_FRONTEND_SIGNUP_URI:http://localhost:3000/auth/callback/signup}
-      frontend-failure-uri: ${OAUTH_FRONTEND_FAILURE_URI:http://localhost:3000/auth/callback/error}
+      kakao-login-url: ${OAUTH_KAKAO_LOGIN_URL}
+      frontend-success-uri: ${OAUTH_FRONTEND_SUCCESS_URI}
+      frontend-signup-uri: ${OAUTH_FRONTEND_SIGNUP_URI}
+      frontend-failure-uri: ${OAUTH_FRONTEND_FAILURE_URI}
       social-signup-ticket-expiration: ${OAUTH_SOCIAL_SIGNUP_TICKET_EXPIRATION:1800}
     email:
       enabled: ${EMAIL_FEATURE_ENABLED:false}

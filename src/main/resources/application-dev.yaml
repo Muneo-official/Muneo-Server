@@ -3,12 +3,12 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: ${DEV_DB_URL}
-    username: ${DEV_DB_USERNAME}
-    password: ${DEV_DB_PASSWORD}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: false
 
 logging:
@@ -24,4 +24,4 @@ springdoc:
 
 app:
   cors:
-    allowed-origins: ${DEV_CORS_ALLOWED_ORIGINS}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
