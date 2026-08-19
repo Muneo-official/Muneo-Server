@@ -1,82 +1,119 @@
+name: muneo-dev
+
 services:
-  app:
-    image: ${DOCKERHUB_IMAGE:-dykkim/muneo}:${IMAGE_TAG:-latest}
-    container_name: muneo-app
+  spring:
+    image: ${SPRING_IMAGE:?SPRING_IMAGE is required}
     restart: unless-stopped
-    expose:
-      - "8080"
+    ports:
+      - "${SPRING_BIND_ADDRESS:?SPRING_BIND_ADDRESS is required}:${SPRING_HOST_PORT:-8080}:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE is required}
+      SERVER_PORT: 8080
       SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:-20MB}
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:-20MB}
+
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      DB_USERNAME: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DDL_AUTO: ${DDL_AUTO:-update}
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis1234}
-      JWT_SECRET: ${JWT_SECRET}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-http://ai:8000}
+      AI_API_CONNECT_TIMEOUT_MS: ${AI_API_CONNECT_TIMEOUT_MS:-5000}
+      AI_API_READ_TIMEOUT_MS: ${AI_API_READ_TIMEOUT_MS:-300000}
+
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600}
       JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-1209600}
-      AI_API_BASE_URL: ${AI_API_BASE_URL}
-      AI_API_CONNECT_TIMEOUT_MS: ${AI_API_CONNECT_TIMEOUT_MS:-5000}
-      AI_API_READ_TIMEOUT_MS: ${AI_API_READ_TIMEOUT_MS:-120000}
-      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
-      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
-      OAUTH_FRONTEND_SUCCESS_URI: ${OAUTH_FRONTEND_SUCCESS_URI}
-      OAUTH_FRONTEND_SIGNUP_URI: ${OAUTH_FRONTEND_SIGNUP_URI}
-      OAUTH_FRONTEND_FAILURE_URI: ${OAUTH_FRONTEND_FAILURE_URI}
-      OAUTH_KAKAO_LOGIN_URL: ${OAUTH_KAKAO_LOGIN_URL}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
+
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?KAKAO_CLIENT_ID is required}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:?KAKAO_CLIENT_SECRET is required}
+      OAUTH_KAKAO_LOGIN_URL: ${OAUTH_KAKAO_LOGIN_URL:?OAUTH_KAKAO_LOGIN_URL is required}
+      OAUTH_FRONTEND_SUCCESS_URI: ${OAUTH_FRONTEND_SUCCESS_URI:?OAUTH_FRONTEND_SUCCESS_URI is required}
+      OAUTH_FRONTEND_SIGNUP_URI: ${OAUTH_FRONTEND_SIGNUP_URI:?OAUTH_FRONTEND_SIGNUP_URI is required}
+      OAUTH_FRONTEND_FAILURE_URI: ${OAUTH_FRONTEND_FAILURE_URI:?OAUTH_FRONTEND_FAILURE_URI is required}
+      OAUTH_SOCIAL_SIGNUP_TICKET_EXPIRATION: ${OAUTH_SOCIAL_SIGNUP_TICKET_EXPIRATION:-1800}
+
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-None}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
-      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+
       EMAIL_FEATURE_ENABLED: ${EMAIL_FEATURE_ENABLED:-false}
-      PROD_DB_URL: ${PROD_DB_URL}
-      PROD_DB_USERNAME: ${PROD_DB_USERNAME}
-      PROD_DB_PASSWORD: ${PROD_DB_PASSWORD}
-      DDL_AUTO: ${DDL_AUTO:-validate}
+      EMAIL_VERIFICATION_CODE_EXPIRATION: ${EMAIL_VERIFICATION_CODE_EXPIRATION:-300}
+      PASSWORD_RESET_CODE_EXPIRATION: ${PASSWORD_RESET_CODE_EXPIRATION:-300}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-ap-northeast-2}
+      S3_PRESIGNED_URL_EXPIRATION: ${S3_PRESIGNED_URL_EXPIRATION:-10m}
+      S3_ESTIMATE_DIRECTORY: ${S3_ESTIMATE_DIRECTORY:-estimate}
+      S3_POST_DIRECTORY: ${S3_POST_DIRECTORY:-post}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - muneo-net
+      - internal
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:18-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - internal
 
   redis:
-    image: redis:7-alpine
-    container_name: muneo-redis
+    image: ${REDIS_IMAGE:-redis:7-alpine}
     restart: unless-stopped
-    command: >
-      sh -c "redis-server --appendonly yes
-      --requirepass '${REDIS_PASSWORD:-redis1234}'"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD:-redis1234}' ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
-      retries: 5
+      retries: 10
       start_period: 5s
     networks:
-      - muneo-net
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: muneo-nginx
-    restart: unless-stopped
-    depends_on:
-      app:
-        condition: service_started
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./certs:/etc/nginx/certs:ro
-    networks:
-      - muneo-net
+      - internal
 
 volumes:
+  postgres-data:
   redis-data:
 
 networks:
-  muneo-net:
-    name: muneo-shared-net
-    driver: bridge
+  internal:
+    # The AI repository must attach its DEV service to this network with the alias "ai".
+    external: true
+    name: ${DEV_DOCKER_NETWORK:-muneo-dev-internal}
