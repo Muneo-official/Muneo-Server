@@ -20,8 +20,8 @@ public class AiServiceImpl implements AiService {
     private final AiApiRepository aiApiRepository;
 
     @Override
-    public ResponseEntity<Object> generateEstimate(EstimateGenerateRequest request) {
-        return aiApiRepository.generateEstimate(request);
+    public ResponseEntity<Object> generateEstimate(AuthUser authUser, EstimateGenerateRequest request) {
+        return aiApiRepository.generateEstimate(requireAuthUser(authUser), request);
     }
 
     @Override

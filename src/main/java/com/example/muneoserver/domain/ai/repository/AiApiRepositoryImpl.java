@@ -31,8 +31,8 @@ public class AiApiRepositoryImpl implements AiApiRepository {
     private final AiProperties aiProperties;
 
     @Override
-    public ResponseEntity<Object> generateEstimate(EstimateGenerateRequest request) {
-        return exchange(HttpMethod.POST, "/estimates/generate", null, request, MediaType.APPLICATION_JSON);
+    public ResponseEntity<Object> generateEstimate(String userId, EstimateGenerateRequest request) {
+        return exchange(HttpMethod.POST, "/estimates/generate", userId, request, MediaType.APPLICATION_JSON);
     }
 
     @Override

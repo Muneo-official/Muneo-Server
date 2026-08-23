@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 
 public interface AiService {
 
-    ResponseEntity<Object> generateEstimate(EstimateGenerateRequest request);
+    ResponseEntity<Object> generateEstimate(AuthUser authUser, EstimateGenerateRequest request);
 
     ResponseEntity<Object> saveEstimate(AuthUser authUser, EstimateSaveRequest request);
 

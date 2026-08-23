@@ -35,8 +35,11 @@ public class AiController {
     private final AiService aiService;
 
     @PostMapping("/estimates/generate")
-    public ResponseEntity<Object> generateEstimate(@Valid @RequestBody EstimateGenerateRequest request) {
-        return aiService.generateEstimate(request);
+    public ResponseEntity<Object> generateEstimate(
+            @AuthenticationPrincipal AuthUser authUser,
+            @Valid @RequestBody EstimateGenerateRequest request
+    ) {
+        return aiService.generateEstimate(authUser, request);
     }
 
     @PostMapping("/estimates/save")

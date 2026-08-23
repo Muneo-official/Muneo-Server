@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 
 public interface AiApiRepository {
 
-    ResponseEntity<Object> generateEstimate(EstimateGenerateRequest request);
+    ResponseEntity<Object> generateEstimate(String userId, EstimateGenerateRequest request);
 
     ResponseEntity<Object> saveEstimate(String userId, EstimateSaveRequest request);
 
