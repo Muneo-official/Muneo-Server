@@ -6,6 +6,7 @@ import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
 import com.example.muneoserver.domain.ai.service.AiService;
+import com.example.muneoserver.global.dto.ApiResponse;
 import com.example.muneoserver.global.security.auth.AuthUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -52,7 +53,10 @@ public class AiController {
 
     @GetMapping("/estimates")
     public ResponseEntity<Object> getEstimates(@AuthenticationPrincipal AuthUser authUser) {
-        return aiService.getEstimates(authUser);
+        return wrapSuccessfulResponse(
+                aiService.getEstimates(authUser),
+                "견적 목록 조회에 성공했습니다."
+        );
     }
 
     @DeleteMapping("/estimates/{id}")
@@ -104,7 +108,10 @@ public class AiController {
 
     @GetMapping("/risk-detector")
     public ResponseEntity<Object> getRiskReports(@AuthenticationPrincipal AuthUser authUser) {
-        return aiService.getRiskReports(authUser);
+        return wrapSuccessfulResponse(
+                aiService.getRiskReports(authUser),
+                "리스크 보고서 목록 조회에 성공했습니다."
+        );
     }
 
     @DeleteMapping("/risk-detector/{reportId}")
@@ -113,5 +120,15 @@ public class AiController {
             @PathVariable("reportId") String reportId
     ) {
         return aiService.deleteRiskReport(authUser, reportId);
+    }
+
+    private ResponseEntity<Object> wrapSuccessfulResponse(ResponseEntity<Object> response, String message) {
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            return response;
+        }
+
+        return ResponseEntity
+                .status(response.getStatusCode())
+                .body(ApiResponse.success(response.getBody(), message));
     }
 }
