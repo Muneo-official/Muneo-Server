@@ -2,7 +2,6 @@ package com.example.muneoserver.domain.ai.repository;
 
 import com.example.muneoserver.domain.ai.dto.ChatRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
-import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +10,7 @@ public interface AiApiRepository {
 
     ResponseEntity<Object> generateEstimate(String userId, EstimateGenerateRequest request);
 
-    ResponseEntity<Object> saveEstimate(String userId, EstimateSaveRequest request);
+    ResponseEntity<Object> saveEstimate(String userId, String estimateToken);
 
     ResponseEntity<Object> getEstimates(String userId);
 

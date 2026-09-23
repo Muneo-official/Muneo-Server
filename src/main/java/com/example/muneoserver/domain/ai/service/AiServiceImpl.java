@@ -9,6 +9,7 @@ import com.example.muneoserver.domain.ai.repository.AiApiRepository;
 import com.example.muneoserver.global.error.exception.CommonException;
 import com.example.muneoserver.global.error.exception.ErrorCode;
 import com.example.muneoserver.global.security.auth.AuthUser;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,10 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public ResponseEntity<Object> saveEstimate(AuthUser authUser, EstimateSaveRequest request) {
-        return aiApiRepository.saveEstimate(requireAuthUser(authUser), request);
+        return aiApiRepository.saveEstimate(
+                requireAuthUser(authUser),
+                requireEstimateToken(request)
+        );
     }
 
     @Override
@@ -69,5 +73,18 @@ public class AiServiceImpl implements AiService {
             throw new CommonException(ErrorCode.UNAUTHORIZED);
         }
         return String.valueOf(authUser.id());
+    }
+
+    private String requireEstimateToken(EstimateSaveRequest request) {
+        Object estimateToken = request == null || request.result() == null
+                ? null
+                : request.result().get("estimate_token");
+        if (!(estimateToken instanceof String token) || token.isBlank()) {
+            throw new CommonException(
+                    ErrorCode.VALIDATION_FAILED,
+                    Map.of("result.estimate_token", "estimate_token은 필수입니다.")
+            );
+        }
+        return token;
     }
 }
