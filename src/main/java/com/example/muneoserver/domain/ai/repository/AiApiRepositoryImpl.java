@@ -3,7 +3,6 @@ package com.example.muneoserver.domain.ai.repository;
 import com.example.muneoserver.domain.ai.config.AiProperties;
 import com.example.muneoserver.domain.ai.dto.ChatRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
-import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
 import java.io.IOException;
@@ -36,7 +35,8 @@ public class AiApiRepositoryImpl implements AiApiRepository {
     }
 
     @Override
-    public ResponseEntity<Object> saveEstimate(String userId, EstimateSaveRequest request) {
+    public ResponseEntity<Object> saveEstimate(String userId, String estimateToken) {
+        Map<String, String> request = Map.of("estimate_token", estimateToken);
         return exchange(HttpMethod.POST, "/estimates/save", userId, request, MediaType.APPLICATION_JSON);
     }
 
