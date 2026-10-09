@@ -9,6 +9,7 @@ import com.example.muneoserver.domain.user.dto.password.PasswordResetRequest;
 import com.example.muneoserver.domain.user.dto.profile.LocalProfileUpdateRequest;
 import com.example.muneoserver.domain.user.dto.profile.SocialProfileUpdateRequest;
 import com.example.muneoserver.domain.user.repository.UserRepository;
+import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
 import com.example.muneoserver.global.error.exception.CommonException;
 import com.example.muneoserver.global.error.exception.ErrorCode;
 import com.example.muneoserver.global.mail.MailSenderService;
@@ -35,6 +36,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     private final EmailCodeStore emailCodeStore;
     private final MailSenderService mailSenderService;
     private final SecurityProperties securityProperties;
+    private final RiskFeedbackService riskFeedbackService;
 
     @Override
     public UserResponse updateLocalProfile(AuthUser authUser, LocalProfileUpdateRequest request) {
@@ -73,6 +75,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public void withdraw(AuthUser authUser) {
         User user = getActiveUser(authUser);
+        riskFeedbackService.deleteByUserId(user.getId());
         user.withdraw();
         refreshTokenStore.delete(user.getId());
     }
