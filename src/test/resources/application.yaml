@@ -8,6 +8,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
   data:
+    mongodb:
+      uri: mongodb://localhost:27017/estimate_db_test
+      database: estimate_db_test
+      auto-index-creation: false
     redis:
       host: localhost
       port: 6379

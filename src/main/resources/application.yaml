@@ -4,6 +4,10 @@ spring:
   profiles:
     default: local
   data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI}
+      database: ${SPRING_DATA_MONGODB_DATABASE:estimate_db}
+      auto-index-creation: false
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
