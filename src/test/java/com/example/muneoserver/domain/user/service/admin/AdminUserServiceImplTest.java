@@ -14,6 +14,7 @@ import com.example.muneoserver.domain.user.dto.admin.AdminUserResponse;
 import com.example.muneoserver.domain.user.dto.admin.AdminUserRoleUpdateRequest;
 import com.example.muneoserver.domain.user.dto.admin.AdminUserUpdateRequest;
 import com.example.muneoserver.domain.user.repository.UserRepository;
+import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
 import com.example.muneoserver.global.error.exception.CommonException;
 import com.example.muneoserver.global.error.exception.ErrorCode;
 import com.example.muneoserver.global.security.auth.AuthUser;
@@ -35,6 +36,9 @@ class AdminUserServiceImplTest {
 
     @Mock
     private RefreshTokenStore refreshTokenStore;
+
+    @Mock
+    private RiskFeedbackService riskFeedbackService;
 
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
@@ -79,6 +83,7 @@ class AdminUserServiceImplTest {
         adminUserService.deleteUser(adminUser, user.getId());
 
         assertThat(user.isDeleted()).isTrue();
+        verify(riskFeedbackService).deleteByUserId(user.getId());
         verify(refreshTokenStore).delete(user.getId());
     }
 
