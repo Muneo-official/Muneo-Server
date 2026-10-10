@@ -12,6 +12,7 @@ public enum ErrorCode {
     RISK_REPORT_NOT_FOUND(404, "RISK_REPORT_NOT_FOUND", "리스크 보고서를 찾을 수 없습니다."),
     RISK_FEEDBACK_CONFLICT(409, "RISK_FEEDBACK_CONFLICT", "피드백이 동시에 변경되었습니다. 다시 시도해 주세요."),
     RISK_REPORT_STORE_UNAVAILABLE(503, "RISK_REPORT_STORE_UNAVAILABLE", "리스크 보고서 저장소를 일시적으로 사용할 수 없습니다."),
+    ADMIN_ACTIVITY_STORE_UNAVAILABLE(503, "ADMIN_ACTIVITY_STORE_UNAVAILABLE", "사용자 이용 내역 저장소를 일시적으로 사용할 수 없습니다."),
     MEMBER_ALREADY_EXISTS(409, "MEMBER_ALREADY_EXISTS", "이미 가입된 이메일입니다."),
     INVALID_LOGIN_INFO(401, "INVALID_LOGIN_INFO", "이메일 또는 비밀번호가 올바르지 않습니다."),
     INVALID_TOKEN(401, "INVALID_TOKEN", "유효하지 않은 토큰입니다."),
