@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.repository.AiApiRepository;
+import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
 import com.example.muneoserver.domain.user.domain.AuthProvider;
 import com.example.muneoserver.domain.user.domain.UserRole;
 import com.example.muneoserver.global.error.exception.CommonException;
@@ -22,12 +23,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceImplTest {
 
     @Mock
     private AiApiRepository aiApiRepository;
+
+    @Mock
+    private RiskFeedbackService riskFeedbackService;
 
     @InjectMocks
     private AiServiceImpl aiService;
@@ -108,5 +113,31 @@ class AiServiceImplTest {
                         .isEqualTo(ErrorCode.VALIDATION_FAILED));
 
         verifyNoInteractions(aiApiRepository);
+    }
+
+    @Test
+    void deleteRiskReportDeletesFeedbackAfterAiDeletionSucceeds() {
+        String reportId = "507f1f77bcf86cd799439011";
+        ResponseEntity<Object> expectedResponse = ResponseEntity.noContent().build();
+        when(aiApiRepository.deleteRiskReport("42", reportId)).thenReturn(expectedResponse);
+
+        ResponseEntity<Object> response = aiService.deleteRiskReport(authUser, reportId);
+
+        assertThat(response).isSameAs(expectedResponse);
+        verify(riskFeedbackService).deleteByUserIdAndReportId(42L, reportId);
+    }
+
+    @Test
+    void deleteRiskReportKeepsFeedbackWhenAiDeletionFails() {
+        String reportId = "507f1f77bcf86cd799439011";
+        ResponseEntity<Object> expectedResponse = ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("detail", "not found"));
+        when(aiApiRepository.deleteRiskReport("42", reportId)).thenReturn(expectedResponse);
+
+        ResponseEntity<Object> response = aiService.deleteRiskReport(authUser, reportId);
+
+        assertThat(response).isSameAs(expectedResponse);
+        verifyNoInteractions(riskFeedbackService);
     }
 }

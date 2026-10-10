@@ -7,6 +7,7 @@ import com.example.muneoserver.domain.user.dto.admin.AdminUserRoleUpdateRequest;
 import com.example.muneoserver.domain.user.dto.admin.AdminUserSearchCondition;
 import com.example.muneoserver.domain.user.dto.admin.AdminUserUpdateRequest;
 import com.example.muneoserver.domain.user.repository.UserRepository;
+import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
 import com.example.muneoserver.global.dto.PageResponse;
 import com.example.muneoserver.global.error.exception.CommonException;
 import com.example.muneoserver.global.error.exception.ErrorCode;
@@ -30,6 +31,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private final UserRepository userRepository;
     private final RefreshTokenStore refreshTokenStore;
+    private final RiskFeedbackService riskFeedbackService;
 
     @Override
     @Transactional(readOnly = true)
@@ -85,6 +87,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new CommonException(ErrorCode.USER_ALREADY_DELETED);
         }
 
+        riskFeedbackService.deleteByUserId(user.getId());
         user.withdraw();
         refreshTokenStore.delete(user.getId());
     }

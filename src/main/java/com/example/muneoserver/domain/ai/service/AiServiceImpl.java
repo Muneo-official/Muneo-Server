@@ -6,6 +6,7 @@ import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
 import com.example.muneoserver.domain.ai.repository.AiApiRepository;
+import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
 import com.example.muneoserver.global.error.exception.CommonException;
 import com.example.muneoserver.global.error.exception.ErrorCode;
 import com.example.muneoserver.global.security.auth.AuthUser;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class AiServiceImpl implements AiService {
 
     private final AiApiRepository aiApiRepository;
+    private final RiskFeedbackService riskFeedbackService;
 
     @Override
     public ResponseEntity<Object> generateEstimate(AuthUser authUser, EstimateGenerateRequest request) {
@@ -65,7 +67,12 @@ public class AiServiceImpl implements AiService {
 
     @Override
     public ResponseEntity<Object> deleteRiskReport(AuthUser authUser, String reportId) {
-        return aiApiRepository.deleteRiskReport(requireAuthUser(authUser), reportId);
+        String userId = requireAuthUser(authUser);
+        ResponseEntity<Object> response = aiApiRepository.deleteRiskReport(userId, reportId);
+        if (response.getStatusCode().is2xxSuccessful()) {
+            riskFeedbackService.deleteByUserIdAndReportId(Long.valueOf(userId), reportId);
+        }
+        return response;
     }
 
     private String requireAuthUser(AuthUser authUser) {
