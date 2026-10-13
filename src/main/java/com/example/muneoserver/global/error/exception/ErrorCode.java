@@ -8,6 +8,7 @@ public enum ErrorCode {
     DATA_INTEGRITY_VIOLATION(400, "DATA_INTEGRITY_VIOLATION", "데이터 무결성 오류가 발생했습니다."),
     UNPROCESSABLE_ENTITY(422, "UNPROCESSABLE_ENTITY", "요청 내용을 처리할 수 없습니다."),
     UNAUTHORIZED(401, "UNAUTHORIZED", "인증이 필요합니다."),
+    ESTIMATE_JOB_NOT_FOUND(404, "ESTIMATE_JOB_NOT_FOUND", "견적 생성 작업을 찾을 수 없습니다."),
     RISK_REPORT_ACCESS_FORBIDDEN(403, "RISK_REPORT_ACCESS_FORBIDDEN", "해당 리스크 보고서에 접근할 권한이 없습니다."),
     RISK_REPORT_NOT_FOUND(404, "RISK_REPORT_NOT_FOUND", "리스크 보고서를 찾을 수 없습니다."),
     RISK_FEEDBACK_CONFLICT(409, "RISK_FEEDBACK_CONFLICT", "피드백이 동시에 변경되었습니다. 다시 시도해 주세요."),
