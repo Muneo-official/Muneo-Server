@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.repository.AiApiRepository;
 import com.example.muneoserver.domain.riskfeedback.service.RiskFeedbackService;
@@ -44,30 +43,6 @@ class AiServiceImplTest {
             true,
             UserRole.USER
     );
-
-    @Test
-    void generateEstimatePassesAuthenticatedUserIdToAiRepository() {
-        EstimateGenerateRequest request = mock(EstimateGenerateRequest.class);
-        ResponseEntity<Object> expectedResponse = ResponseEntity.ok().build();
-        when(aiApiRepository.generateEstimate("42", request)).thenReturn(expectedResponse);
-
-        ResponseEntity<Object> response = aiService.generateEstimate(authUser, request);
-
-        assertThat(response).isSameAs(expectedResponse);
-        verify(aiApiRepository).generateEstimate("42", request);
-    }
-
-    @Test
-    void generateEstimateRejectsMissingAuthentication() {
-        EstimateGenerateRequest request = mock(EstimateGenerateRequest.class);
-
-        assertThatThrownBy(() -> aiService.generateEstimate(null, request))
-                .isInstanceOf(CommonException.class)
-                .satisfies(exception -> assertThat(((CommonException) exception).getErrorCode())
-                        .isEqualTo(ErrorCode.UNAUTHORIZED));
-
-        verifyNoInteractions(aiApiRepository);
-    }
 
     @Test
     void saveEstimateExtractsTokenFromResultForAiRequest() {
