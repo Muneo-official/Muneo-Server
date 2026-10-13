@@ -4,12 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.example.muneoserver.domain.ai.service.AiService;
+import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
+import com.example.muneoserver.domain.ai.job.domain.EstimateJobStatus;
+import com.example.muneoserver.domain.ai.job.dto.EstimateJobAcceptedResponse;
+import com.example.muneoserver.domain.ai.job.service.EstimateJobService;
 import com.example.muneoserver.domain.user.domain.AuthProvider;
 import com.example.muneoserver.domain.user.domain.UserRole;
 import com.example.muneoserver.global.dto.ApiResponse;
 import com.example.muneoserver.global.security.auth.AuthUser;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +29,9 @@ class AiControllerTest {
     @Mock
     private AiService aiService;
 
+    @Mock
+    private EstimateJobService estimateJobService;
+
     @InjectMocks
     private AiController aiController;
 
@@ -34,6 +42,26 @@ class AiControllerTest {
             true,
             UserRole.USER
     );
+
+    @Test
+    void generateEstimateReturnsAcceptedJob() {
+        EstimateGenerateRequest request = org.mockito.Mockito.mock(EstimateGenerateRequest.class);
+        UUID jobId = UUID.randomUUID();
+        EstimateJobAcceptedResponse accepted = new EstimateJobAcceptedResponse(
+                jobId,
+                EstimateJobStatus.PENDING,
+                3_000L
+        );
+        when(estimateJobService.submit(authUser, request)).thenReturn(accepted);
+
+        ResponseEntity<ApiResponse<EstimateJobAcceptedResponse>> response =
+                aiController.generateEstimate(authUser, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().result()).isEqualTo(accepted);
+        assertThat(response.getBody().status()).isEqualTo(202);
+    }
 
     @Test
     void getEstimatesWrapsAiArrayInApiResponse() {

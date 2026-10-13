@@ -5,6 +5,9 @@ import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
+import com.example.muneoserver.domain.ai.job.dto.EstimateJobAcceptedResponse;
+import com.example.muneoserver.domain.ai.job.dto.EstimateJobStatusResponse;
+import com.example.muneoserver.domain.ai.job.service.EstimateJobService;
 import com.example.muneoserver.domain.ai.service.AiService;
 import com.example.muneoserver.global.dto.ApiResponse;
 import com.example.muneoserver.global.security.auth.AuthUser;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.UUID;
 
 @Validated
 @RestController
@@ -34,13 +38,28 @@ import org.springframework.web.multipart.MultipartFile;
 public class AiController {
 
     private final AiService aiService;
+    private final EstimateJobService estimateJobService;
 
     @PostMapping("/estimates/generate")
-    public ResponseEntity<Object> generateEstimate(
+    public ResponseEntity<ApiResponse<EstimateJobAcceptedResponse>> generateEstimate(
             @AuthenticationPrincipal AuthUser authUser,
             @Valid @RequestBody EstimateGenerateRequest request
     ) {
-        return aiService.generateEstimate(authUser, request);
+        EstimateJobAcceptedResponse result = estimateJobService.submit(authUser, request);
+        return ResponseEntity.accepted().body(
+                ApiResponse.accepted(result, "견적 생성 작업이 접수되었습니다.")
+        );
+    }
+
+    @GetMapping("/estimates/jobs/{jobId}")
+    public ResponseEntity<ApiResponse<EstimateJobStatusResponse>> getEstimateJob(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable UUID jobId
+    ) {
+        EstimateJobStatusResponse result = estimateJobService.get(authUser, jobId);
+        return ResponseEntity.ok(
+                ApiResponse.success(result, "견적 생성 작업 조회에 성공했습니다.")
+        );
     }
 
     @PostMapping("/estimates/save")
