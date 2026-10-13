@@ -52,6 +52,18 @@ public record ApiResponse<T>(
         );
     }
 
+    public static <T> ApiResponse<T> accepted(T result, String message) {
+        return new ApiResponse<>(
+                true,
+                202,
+                "ACCEPTED",
+                Instant.now(),
+                message,
+                result,
+                null
+        );
+    }
+
     public static <T> ApiResponse<T> fail(ErrorCode errorCode) {
         return new ApiResponse<>(
                 false,

@@ -1,7 +1,6 @@
 package com.example.muneoserver.domain.ai.service;
 
 import com.example.muneoserver.domain.ai.dto.ChatRequest;
-import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
 import com.example.muneoserver.domain.ai.dto.EstimateSaveRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
 import com.example.muneoserver.domain.ai.dto.RiskReportSaveRequest;
@@ -21,11 +20,6 @@ public class AiServiceImpl implements AiService {
 
     private final AiApiRepository aiApiRepository;
     private final RiskFeedbackService riskFeedbackService;
-
-    @Override
-    public ResponseEntity<Object> generateEstimate(AuthUser authUser, EstimateGenerateRequest request) {
-        return aiApiRepository.generateEstimate(requireAuthUser(authUser), request);
-    }
 
     @Override
     public ResponseEntity<Object> saveEstimate(AuthUser authUser, EstimateSaveRequest request) {
