@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 21MB
   application:
     name: muneo-server
   profiles:
@@ -90,3 +94,7 @@ app:
     presigned-url-expiration: ${S3_PRESIGNED_URL_EXPIRATION:10m}
     estimate-directory: ${S3_ESTIMATE_DIRECTORY:estimate}
     post-directory: ${S3_POST_DIRECTORY:post}
+
+trial:
+  session-limit: ${TRIAL_SESSION_LIMIT:3}
+  global-hourly-limit: ${TRIAL_GLOBAL_HOURLY_LIMIT:60}
