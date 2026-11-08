@@ -100,13 +100,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<Map<String, String>> handleUploadSize(MaxUploadSizeExceededException e) {
-        return ResponseEntity.status(413).body(Map.of("message", "파일당 10MB, 전체 20MB 이하로 올려 주세요."));
+    public ResponseEntity<ApiResponse<Void>> handleUploadSize(MaxUploadSizeExceededException e) {
+        return ResponseEntity
+                .status(ErrorCode.FILE_UPLOAD_SIZE_EXCEEDED.status())
+                .body(ApiResponse.fail(ErrorCode.FILE_UPLOAD_SIZE_EXCEEDED));
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)
-    public ResponseEntity<Map<String, String>> handleMissingPart(MissingServletRequestPartException e) {
-        return ResponseEntity.badRequest().body(Map.of("message", "견적서 파일을 한 개 이상 올려 주세요."));
+    public ResponseEntity<ApiResponse<Void>> handleMissingPart(MissingServletRequestPartException e) {
+        return ResponseEntity.badRequest().body(ApiResponse.fail(
+                ErrorCode.VALIDATION_FAILED,
+                Map.of(e.getRequestPartName(), "필수 요청 항목입니다.")
+        ));
     }
 
     @ExceptionHandler(Exception.class)
