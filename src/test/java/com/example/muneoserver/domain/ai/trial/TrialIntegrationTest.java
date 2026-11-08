@@ -48,7 +48,7 @@ import org.springframework.web.client.RestTemplate;
 // 전용 로컬 Redis를 명시한 실행에서만 동작한다. 운영 Redis에는 연결하지 않는다.
 @EnabledIfEnvironmentVariable(named = "TRIAL_TEST_REDIS_PORT", matches = "[0-9]+")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "spring.servlet.multipart.max-file-size=10MB", "spring.servlet.multipart.max-request-size=21MB"
+        "spring.servlet.multipart.max-file-size=20MB", "spring.servlet.multipart.max-request-size=21MB"
 })
 class TrialIntegrationTest {
     @DynamicPropertySource
@@ -181,7 +181,11 @@ class TrialIntegrationTest {
     void oversizedUploadReturnsActionable413WithoutCallingAi() throws Exception {
         HttpResponse<String> response = upload(session("analysis"), "estimate.pdf", "x".repeat(11 * 1024 * 1024));
         assertThat(response.statusCode()).isEqualTo(413);
-        assertThat(response.body()).contains("10MB");
+        JsonNode body = json.readTree(response.body());
+        assertThat(body.get("success").asBoolean()).isFalse();
+        assertThat(body.get("status").asInt()).isEqualTo(413);
+        assertThat(body.get("code").asText()).isEqualTo("FILE_UPLOAD_SIZE_EXCEEDED");
+        assertThat(body.get("message").asText()).contains("10MB");
         ai.verify();
     }
 

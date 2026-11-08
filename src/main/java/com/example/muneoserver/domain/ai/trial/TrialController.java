@@ -2,8 +2,10 @@ package com.example.muneoserver.domain.ai.trial;
 
 import com.example.muneoserver.domain.ai.dto.EstimateGenerateRequest;
 import com.example.muneoserver.domain.ai.dto.RiskAnalyzeRequest;
-import com.example.muneoserver.domain.ai.service.AiService;
 import com.example.muneoserver.domain.ai.repository.AiApiRepository;
+import com.example.muneoserver.domain.ai.service.AiService;
+import com.example.muneoserver.global.dto.ApiResponse;
+import com.example.muneoserver.global.error.exception.ErrorCode;
 import com.example.muneoserver.global.security.auth.AuthUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -74,10 +76,11 @@ public class TrialController {
             String name = file.getOriginalFilename();
             if (name == null || !name.toLowerCase(java.util.Locale.ROOT).matches(".+\\.(pdf|jpe?g|png|csv|xlsx?)"))
                 return error(400, "PDF, JPG, PNG, CSV, Excel 파일을 올려 주세요.");
-            if (file.isEmpty() || file.getSize() > 10 * 1024 * 1024) return error(400, "각 파일은 10MB 이하로 올려 주세요.");
+            if (file.isEmpty()) return error(400, "빈 파일은 올릴 수 없습니다.");
+            if (file.getSize() > 10 * 1024 * 1024) return error(413, "각 파일은 10MB 이하로 올려 주세요.");
             totalSize += file.getSize();
         }
-        if (totalSize > 20 * 1024 * 1024) return error(400, "파일 전체 크기는 20MB 이하여야 해요.");
+        if (totalSize > 20 * 1024 * 1024) return error(413, "파일 전체 크기는 20MB 이하여야 해요.");
         String token = token(cookie);
         String lease = store.begin("analysis", token);
         if (lease == null) return error(409, "앞선 진단이 진행 중이에요. 잠시 후 결과를 확인해 주세요.");
@@ -157,6 +160,22 @@ public class TrialController {
     private ResponseEntity<Object> error(int status, String message) {
         ResponseEntity.BodyBuilder response = ResponseEntity.status(status).header(HttpHeaders.CACHE_CONTROL, "no-store");
         if (status == 429) response.header(HttpHeaders.RETRY_AFTER, "1800");
-        return response.body(Map.of("message", message));
+        return response.body(ApiResponse.fail(errorCode(status), message));
+    }
+
+    private ErrorCode errorCode(int status) {
+        return switch (status) {
+            case 400 -> ErrorCode.VALIDATION_FAILED;
+            case 401 -> ErrorCode.UNAUTHORIZED;
+            case 403 -> ErrorCode.TRIAL_RESULT_FORBIDDEN;
+            case 404 -> ErrorCode.TRIAL_NOT_FOUND;
+            case 409 -> ErrorCode.TRIAL_REQUEST_CONFLICT;
+            case 410 -> ErrorCode.TRIAL_RESULT_EXPIRED;
+            case 413 -> ErrorCode.FILE_UPLOAD_SIZE_EXCEEDED;
+            case 429 -> ErrorCode.TRIAL_RATE_LIMIT_EXCEEDED;
+            case 502 -> ErrorCode.TRIAL_UPSTREAM_UNAVAILABLE;
+            case 503 -> ErrorCode.TRIAL_STORE_UNAVAILABLE;
+            default -> ErrorCode.INTERNAL_SERVER_ERROR;
+        };
     }
 }
