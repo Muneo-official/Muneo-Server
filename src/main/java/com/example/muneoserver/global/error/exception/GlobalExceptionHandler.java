@@ -16,6 +16,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @Slf4j
 @RestControllerAdvice
@@ -95,6 +97,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.fail(ErrorCode.RISK_FEEDBACK_CONFLICT));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUploadSize(MaxUploadSizeExceededException e) {
+        return ResponseEntity
+                .status(ErrorCode.FILE_UPLOAD_SIZE_EXCEEDED.status())
+                .body(ApiResponse.fail(ErrorCode.FILE_UPLOAD_SIZE_EXCEEDED));
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMissingPart(MissingServletRequestPartException e) {
+        return ResponseEntity.badRequest().body(ApiResponse.fail(
+                ErrorCode.VALIDATION_FAILED,
+                Map.of(e.getRequestPartName(), "필수 요청 항목입니다.")
+        ));
     }
 
     @ExceptionHandler(Exception.class)
