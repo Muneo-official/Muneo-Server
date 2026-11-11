@@ -59,7 +59,8 @@ public class TrialStore {
     }
 
     public Map<String, Object> save(String kind, String token, String lease, Object input, Object result) {
-        Map<String, Object> preview = project(kind, result);
+        Map<String, Object> inputMap = mapper.convertValue(input, new TypeReference<>() {});
+        Map<String, Object> preview = project(kind, inputMap, result);
         preview.put("expiresAt", Instant.now().plus(TTL).toString());
         Map<String, Object> data = Map.of("input", input, "result", result, "preview", preview);
         final String json;
@@ -115,8 +116,13 @@ public class TrialStore {
         return value instanceof List<?> items ? items : List.of();
     }
 
-    // 비회원 응답은 허용된 요약 필드와 한 항목만 새로 구성한다. 전체 결과를 가려서 보내지 않는다.
-    static Map<String, Object> project(String kind, Object result) {
+    private static final List<String> RISK_STATUSES = List.of("누락", "중복", "불분명");
+    // 대표 공정을 고를 때 확인이 급한 상태일수록 높게 친다.
+    private static final Map<String, Integer> RISK_WEIGHT = Map.of("누락", 3, "불분명", 2, "중복", 1);
+
+    // 비회원 응답은 대표 공정 하나의 전체 내용과 나머지 공정의 이름·건수만 새로 구성한다.
+    // 잠긴 공정의 내용은 응답에 넣지 않는다. 화면은 잠긴 자리를 가짜 행으로 흐리게 그린다.
+    static Map<String, Object> project(String kind, Map<String, Object> input, Object result) {
         Map<String, Object> preview = new LinkedHashMap<>();
         preview.put("kind", kind);
         Map<String, Object> data = object(result);
@@ -125,47 +131,215 @@ public class TrialStore {
             throw new IllegalStateException("올바른 분석 결과를 받지 못했습니다.");
         }
         if ("analysis".equals(kind)) {
-            Map<String, Object> report = object(data.get("report"));
-            List<Map<String, Object>> items = new ArrayList<>();
-            Map<String, Integer> counts = new LinkedHashMap<>();
-            counts.put("누락", 0);
-            counts.put("중복", 0);
-            counts.put("불분명", 0);
-            for (Object sectionValue : list(report.get("process_sections"))) {
-                Map<String, Object> section = object(sectionValue);
-                for (Object itemValue : list(section.get("items"))) {
-                    Map<String, Object> item = object(itemValue);
-                    String status = String.valueOf(item.getOrDefault("status", "불분명"));
-                    if (counts.containsKey(status)) counts.compute(status, (k, count) -> count + 1);
-                    Map<String, Object> visible = new LinkedHashMap<>();
-                    visible.put("process", section.getOrDefault("display_name", section.getOrDefault("process", "")));
-                    for (String field : List.of("status", "title", "description", "guide")) {
-                        visible.put(field, item.get(field) instanceof String text ? text : "");
-                    }
-                    items.add(visible);
-                }
-            }
-            preview.put("totalItems", items.size());
-            preview.put("counts", counts);
-            preview.put("firstItem", items.stream().filter(item -> !"정상".equals(item.get("status")))
-                    .findFirst().orElse(items.isEmpty() ? null : items.getFirst()));
+            projectAnalysis(preview, object(data.get("report")));
         } else {
-            Map<String, Object> ranges = object(data.get("공종별_단가_범위"));
-            List<?> selected = list(data.get("선택_공종"));
-            preview.put("totalProcesses", selected.size());
-            Map<String, Object> first = null;
-            for (Object name : selected) {
-                Map<String, Object> range = object(ranges.get(String.valueOf(name)));
-                if (range.get("최소") instanceof Number && range.get("최대") instanceof Number) {
-                    first = new LinkedHashMap<>();
-                    first.put("name", name);
-                    first.put("min", range.get("최소"));
-                    first.put("max", range.get("최대"));
-                    break;
-                }
-            }
-            preview.put("firstProcess", first);
+            projectEstimate(preview, input, data);
         }
         return preview;
+    }
+
+    private static void projectAnalysis(Map<String, Object> preview, Map<String, Object> report) {
+        List<?> sections = list(report.get("process_sections"));
+        Map<String, Integer> counts = emptyCounts();
+        List<Map<String, Object>> summaries = new ArrayList<>();
+        int totalItems = 0;
+        int revealed = -1;
+        int bestScore = -1;
+        int bestSize = -1;
+        for (int index = 0; index < sections.size(); index++) {
+            Map<String, Object> section = object(sections.get(index));
+            List<?> items = list(section.get("items"));
+            Map<String, Integer> sectionCounts = emptyCounts();
+            int score = 0;
+            for (Object item : items) {
+                String status = status(object(item));
+                if (sectionCounts.containsKey(status)) sectionCounts.compute(status, (k, count) -> count + 1);
+                score += RISK_WEIGHT.getOrDefault(status, 0);
+            }
+            sectionCounts.forEach((status, count) -> counts.merge(status, count, Integer::sum));
+            totalItems += items.size();
+            if (!items.isEmpty() && (score > bestScore || (score == bestScore && items.size() > bestSize))) {
+                revealed = index;
+                bestScore = score;
+                bestSize = items.size();
+            }
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("id", sectionId(section, index));
+            summary.put("display_name", sectionName(section));
+            summary.put("itemCount", items.size());
+            summary.put("counts", sectionCounts);
+            summaries.add(summary);
+        }
+        for (int index = 0; index < summaries.size(); index++) summaries.get(index).put("locked", index != revealed);
+
+        Map<String, Object> visibleSection = revealed < 0 ? null : visibleSection(object(sections.get(revealed)), revealed);
+        Map<String, Object> visibleReport = new LinkedHashMap<>();
+        visibleReport.put("subtitle_fields",
+                pick(object(report.get("subtitle_fields")), "company_name", "pyeong", "analyzed_date"));
+        visibleReport.put("construction_info", pick(object(report.get("construction_info")),
+                "space_type", "region", "building_age", "floor", "elevator", "room_count"));
+        visibleReport.put("process_sections", visibleSection == null ? List.of() : List.of(visibleSection));
+
+        preview.put("report", visibleReport);
+        preview.put("sections", summaries);
+        preview.put("counts", counts);
+        preview.put("totalItems", totalItems);
+        // 배포 전환 중 이전 화면 호환용. 대표 공정 안의 첫 확인 항목만 담는다.
+        preview.put("firstItem", visibleSection == null ? null : legacyFirstItem(visibleSection));
+    }
+
+    private static void projectEstimate(Map<String, Object> preview, Map<String, Object> input,
+            Map<String, Object> data) {
+        Map<String, Object> ranges = object(data.get("공종별_단가_범위"));
+        Map<String, Object> specs = object(data.get("공종별_항목_명세"));
+        List<String> selected = strings(data.get("선택_공종"));
+        List<String> insufficient = strings(data.get("데이터_부족_공종"));
+
+        String revealed = null;
+        long[] best = null;
+        for (String name : selected) {
+            Map<String, Object> range = object(ranges.get(name));
+            if (insufficient.contains(name) || !(range.get("최소") instanceof Number)
+                    || !(range.get("최대") instanceof Number max)) continue;
+            List<?> items = list(specs.get(name));
+            long evidenced = items.stream()
+                    .filter(item -> object(item).get("등장_사례_수") instanceof Number count && count.longValue() > 0)
+                    .count();
+            long[] score = {evidenced, items.size(), max.longValue()};
+            if (best == null || compare(score, best) > 0) {
+                best = score;
+                revealed = name;
+            }
+        }
+
+        Map<String, Object> visibleRanges = new LinkedHashMap<>();
+        Map<String, Object> visibleSpecs = new LinkedHashMap<>();
+        List<Map<String, Object>> locked = new ArrayList<>();
+        for (String name : selected) {
+            // 데이터 부족 공정은 보여줄 금액이 없으므로 잠그지 않고 그대로 안내한다.
+            if (name.equals(revealed) || insufficient.contains(name)) {
+                if (ranges.containsKey(name)) visibleRanges.put(name, range(object(ranges.get(name))));
+                if (specs.containsKey(name)) visibleSpecs.put(name, lineItems(list(specs.get(name))));
+            } else {
+                Map<String, Object> summary = new LinkedHashMap<>();
+                summary.put("name", name);
+                summary.put("itemCount", list(specs.get(name)).size());
+                summary.put("priced", ranges.containsKey(name));
+                locked.add(summary);
+            }
+        }
+
+        Map<String, Object> visible = new LinkedHashMap<>();
+        visible.put("선택_공종", selected);
+        if (data.get("시공범위") instanceof String scope) visible.put("시공범위", scope);
+        visible.put("보정_적용", strings(data.get("보정_적용")));
+        visible.put("참고_사례_수", data.get("참고_사례_수") instanceof Number count ? count : 0);
+        visible.put("데이터_부족_공종", insufficient);
+        visible.put("공종별_단가_범위", visibleRanges);
+        visible.put("공종별_항목_명세", visibleSpecs);
+
+        preview.put("input", input);
+        preview.put("result", visible);
+        preview.put("revealedProcess", revealed);
+        preview.put("lockedProcesses", locked);
+        preview.put("totalProcesses", selected.size());
+        Map<String, Object> first = null;
+        if (revealed != null) {
+            Map<String, Object> range = object(ranges.get(revealed));
+            first = new LinkedHashMap<>();
+            first.put("name", revealed);
+            first.put("min", range.get("최소"));
+            first.put("max", range.get("최대"));
+        }
+        // 배포 전환 중 이전 화면 호환용. 대표 공정과 같은 공정을 가리킨다.
+        preview.put("firstProcess", first);
+    }
+
+    private static Map<String, Integer> emptyCounts() {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        RISK_STATUSES.forEach(status -> counts.put(status, 0));
+        return counts;
+    }
+
+    private static String status(Map<String, Object> item) {
+        return String.valueOf(item.getOrDefault("status", "불분명"));
+    }
+
+    private static String sectionId(Map<String, Object> section, int index) {
+        return section.get("id") instanceof String id && !id.isBlank() ? id : String.valueOf(index);
+    }
+
+    private static String sectionName(Map<String, Object> section) {
+        Object name = section.get("display_name") instanceof String text ? text : section.get("process");
+        return name instanceof String text ? text : "";
+    }
+
+    private static Map<String, Object> visibleSection(Map<String, Object> section, int index) {
+        Map<String, Object> visible = new LinkedHashMap<>();
+        visible.put("id", sectionId(section, index));
+        visible.put("process", section.get("process") instanceof String process ? process : "");
+        visible.put("display_name", sectionName(section));
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Object itemValue : list(section.get("items"))) {
+            Map<String, Object> item = object(itemValue);
+            Map<String, Object> copy = new LinkedHashMap<>();
+            if (item.get("id") instanceof String id) copy.put("id", id);
+            copy.put("status", status(item));
+            for (String field : List.of("title", "description", "guide")) {
+                copy.put(field, item.get(field) instanceof String text ? text : "");
+            }
+            items.add(copy);
+        }
+        visible.put("items", items);
+        return visible;
+    }
+
+    private static Map<String, Object> legacyFirstItem(Map<String, Object> section) {
+        List<?> items = list(section.get("items"));
+        Map<String, Object> item = items.stream().map(TrialStore::object)
+                .filter(candidate -> !"정상".equals(candidate.get("status"))).findFirst()
+                .orElse(object(items.getFirst()));
+        Map<String, Object> legacy = new LinkedHashMap<>();
+        legacy.put("process", section.get("display_name"));
+        for (String field : List.of("status", "title", "description", "guide")) legacy.put(field, item.get(field));
+        return legacy;
+    }
+
+    private static Map<String, Object> pick(Map<String, Object> source, String... fields) {
+        Map<String, Object> picked = new LinkedHashMap<>();
+        for (String field : fields) {
+            Object value = source.get(field);
+            if (value instanceof String || value instanceof Number || value instanceof Boolean) picked.put(field, value);
+        }
+        return picked;
+    }
+
+    private static Map<String, Object> range(Map<String, Object> source) {
+        return pick(source, "최소", "중간", "최대");
+    }
+
+    private static List<Map<String, Object>> lineItems(List<?> items) {
+        List<Map<String, Object>> visible = new ArrayList<>();
+        for (Object itemValue : items) {
+            Map<String, Object> item = object(itemValue);
+            Map<String, Object> copy = new LinkedHashMap<>();
+            copy.put("description", item.get("description") instanceof String text ? text : "");
+            copy.put("amount_range", range(object(item.get("amount_range"))));
+            copy.put("등장_사례_수", item.get("등장_사례_수") instanceof Number count ? count : 0);
+            visible.add(copy);
+        }
+        return visible;
+    }
+
+    private static List<String> strings(Object value) {
+        return list(value).stream().filter(String.class::isInstance).map(String.class::cast).toList();
+    }
+
+    private static int compare(long[] left, long[] right) {
+        for (int index = 0; index < left.length; index++) {
+            int result = Long.compare(left[index], right[index]);
+            if (result != 0) return result;
+        }
+        return 0;
     }
 }

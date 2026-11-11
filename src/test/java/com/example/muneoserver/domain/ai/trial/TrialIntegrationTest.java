@@ -82,7 +82,9 @@ class TrialIntegrationTest {
         HttpResponse<String> preview = upload(cookie, "estimate.pdf", "%PDF-1.4 test");
         assertThat(preview.statusCode()).isEqualTo(200);
         assertThat(preview.headers().firstValue("Cache-Control")).contains("no-store");
-        assertThat(preview.body()).contains("폐기물 처리비").doesNotContain("전체 결과 전용", "private_note", "report", "입력 업체");
+        // 대표 공정(철거)만 내용을 담고, 잠긴 도배 공정은 이름과 건수만 보낸다.
+        assertThat(preview.body()).contains("폐기물 처리비", "도배 공사").doesNotContain("전체 결과 전용", "private_note");
+        assertThat(json.readTree(preview.body()).get("sections").get(0).get("locked").asBoolean()).isTrue();
         assertThat(json.readTree(preview.body()).get("totalItems").asInt()).isEqualTo(2);
         assertThat(get("/api/v1/trials/analysis", cookie).body()).isEqualTo(preview.body());
         assertThat(get("/api/v1/trials/analysis/result", cookie).statusCode()).isEqualTo(401);
@@ -112,7 +114,9 @@ class TrialIntegrationTest {
                 .andExpect(method(HttpMethod.POST)).andRespond(withSuccess(TrialFixtures.ESTIMATE, MediaType.APPLICATION_JSON));
         HttpResponse<String> preview = post("/api/v1/trials/estimate", TrialFixtures.ESTIMATE_INPUT, "application/json", cookie);
         assertThat(preview.statusCode()).isEqualTo(200);
-        assertThat(preview.body()).contains("도배").doesNotContain("마루", "검색_쿼리", "총_견적_범위", "estimate_token");
+        assertThat(preview.body()).contains("실크 벽지 시공", "마루")
+                .doesNotContain("전체 결과 전용", "검색_쿼리", "총_견적_범위", "estimate_token", "3300000");
+        assertThat(json.readTree(preview.body()).get("input").get("평수").asInt()).isEqualTo(25);
         verify(estimateTokens).extend(eq(token), any());
         HttpResponse<String> full = get("/api/v1/trials/estimate/result", cookie + "; " + login());
         assertThat(full.statusCode()).isEqualTo(200);
